@@ -1,7 +1,12 @@
 require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const axios = require('axios')
+const express = require('express')
+const app = express()
 
+app.listen(process.env.PORT, () => {
+    console.log(`Bot listening on port ${process.env.PORT}`)
+  })
 
 const bot = new Telegraf(process.env.TOKEN)
 
