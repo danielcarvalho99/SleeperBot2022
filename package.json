@@ -1,0 +1,25 @@
+{
+  "name": "SleeperBot2022",
+  "version": "1.0.0",
+  "description": "A Telegram Bot using Sleeper API for fantasy leagues",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielcarvalho99/SleeperBot2022.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danielcarvalho99/SleeperBot2022/issues"
+  },
+  "homepage": "https://github.com/danielcarvalho99/SleeperBot2022#readme",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "dotenv": "^16.0.1",
+    "telegraf": "^4.8.3"
+  }
+}
