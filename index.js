@@ -4,10 +4,9 @@ const axios = require('axios')
 const express = require('express')
 const app = express()
 
-app.listen(process.env.PORT, () => {
-    console.log(`Bot listening on port ${process.env.PORT}`)
-  })
+console.log(process.env.TOKEN)
 
+app.listen(process.env.PORT || 5000)
 const bot = new Telegraf(process.env.TOKEN)
 
 async function find_user_id(name){
