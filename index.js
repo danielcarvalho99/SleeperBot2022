@@ -56,7 +56,7 @@ async function find_player_id(player_name){
     res = await axios.get('https://api.sleeper.app/v1/players/nfl')
 
     for (let i of Object.keys(res.data)) {
-        if(res.data[i]['full_name'].toLowerCase() == player_name.toLoweCase()){
+        if(res.data[i]['full_name'].toLowerCase() == player_name.toLowerCase()){
             return i
         }
     }
