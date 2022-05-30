@@ -94,3 +94,6 @@ bot.command('leagues', (ctx) => ctx.reply('Digite seu nome de usuário')
 
 
 bot.launch()
+
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))
