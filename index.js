@@ -4,7 +4,7 @@ const axios = require('axios')
 const express = require('express')
 const app = express()
 
-console.log(process.env.TOKEN)
+console.log(`SleeperBot 2022 running on PORT ${process.env.TOKEN}`)
 
 app.listen(process.env.PORT || 5000)
 const bot = new Telegraf(process.env.TOKEN)
@@ -19,11 +19,22 @@ async function find_leagues(result){
     
     let leagues = [] 
     for (let i of res.data) {
-        leagues.push([i['league_id'],i['name']])
+        leagues.push((i['id'], i['name']))
     }
 
     return leagues
 }
+
+function show_leagues(leagues,ctx){
+    let response_str = `O usuário está disponível em ${(leagues.length)} ligas:\n$`
+
+    for (let league of leagues) {
+        response_str += `${league}\n`
+    }
+
+    ctx.reply(response_str)
+}
+
 
 function show_player_info(data){
     const infos = ['full_name','weight','height','birth_date','team','position','injury_status','college','number']
@@ -45,13 +56,15 @@ async function find_player_id(player_name){
     res = await axios.get('https://api.sleeper.app/v1/players/nfl')
 
     for (let i of Object.keys(res.data)) {
-        if(res.data[i]['full_name'].toLowerCase() == player_name.toLowerCase()){
+        if(res.data[i]['full_name'].toLowerCase() == player_name.toLoweCase()){
             return i
         }
     }
+
+    return console.error();
 }
 
-bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, Utilizando o comando /find você poderá encontrar os dados do jogador desejado`)
+bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, O SleeperBot2022 possui os seguintes comandos disponíveis:\n/find: busca pelo jogador\n/leagues para busca das ligas do usuário.`)
             .then(res =>console.log(ctx.from)
             ))
 
@@ -70,11 +83,11 @@ bot.command('find', (ctx) =>  ctx.reply('Escolha o nome do jogador')
 
 bot.command('leagues', (ctx) => ctx.reply('Digite seu nome de usuário')
         .then(bot.on('text', async function (ctx){
-            ctx.reply(`Buscando pelas ligas de ${ctx.message['text']}`)
+            ctx.reply(`Buscando pelas ligas de ${ctx.message['text']}...`)
             find_user_id(ctx.message['text'])
                 .then(res => find_leagues(res))
                 .catch(err => console.log('Não encontrado'))
-                .then(res => ctx.reply(res))
+                .then(res => show_leagues(res, ctx))
         })
 ))
 
