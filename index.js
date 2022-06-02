@@ -14,35 +14,37 @@ const exit_keyboard = Markup.keyboard(['exit']).oneTime()
 const remove_keyboard = Markup.removeKeyboard()
 
 async function find_user_id(name){
-    res = await axios.get(`https://api.sleeper.app/v1/user/${name}`)
-    return res.data['user_id']
+    try{
+        res = await axios.get(`https://api.sleeper.app/v1/user/${name}`)
+        return res.data['user_id']
+    }
+    catch{
+        throw new Error('Usuário não encontrado!')
+    }
 }
 
 async function find_leagues_list(user_id){
-    res = await axios.get(`https://api.sleeper.app/v1/user/${user_id}/leagues/nfl/2021`)
     
-    let leagues = [] 
-    for (let i of res.data) {
-        leagues.push((i['id'], i['name']))
-    }
+    res = await axios.get(`https://api.sleeper.app/v1/user/${user_id}/leagues/nfl/2021`)
 
-    return leagues
-}
+    let leagues = [] 
+        for (let i of res.data) {
+            leagues.push([i['league_id'], i['name']])
+        }
+
+        return leagues
+    }
+    
 
 function find_league_names(leagues){
     
-    try{
-        let response_str = `O usuário está disponível em ${(leagues.length)} ligas:\n$`
-        
-        for (let league of leagues) {
-            response_str += `${league}\n`
-        }
+    let response_str = `O usuário está em ${(leagues.length)} ligas:\n$`
     
-        return response_str
+    for (let league of leagues) {
+        response_str += `${league[1]}\n`
     }
-    catch{
-        return 'Não foi possível executar a operação'
-    }   
+
+    return response_str       
 }
 
 function show_player_info(data){
@@ -66,15 +68,67 @@ async function find_player_id(player_name){
 
     for (let i of Object.keys(res.data)) {
         if(res.data[i]['full_name'].toLowerCase() == player_name.toLowerCase()){
-            //console.log(i)
             return i
         }
     }
+ 
+}
 
+async function find_league_info(league_id){
+    try{
+        res = await axios.get(`https://api.sleeper.app/v1/league/${league_id}/rosters`)
+        return res
+    }
+    catch{
+        throw new Error('Erro!')
+    }
+}
+
+async function is_player_available_in_league(res, player_id, league, leagues_list){
+
+    for(let roster of res.data){
+        for (let player of roster['players']){
+            if(player_id == player) {
+                return
+            }
+        }
+    }
+
+    leagues_list.push(league)
     return 
 }
 
-const playerHandler = Telegraf.on('text', async(ctx) =>{
+async function find_available_leagues_for_player(leagues, player_id, available_leagues_list){
+
+    for(let league of leagues){
+        await find_league_info(league[0])
+        .then(res => is_player_available_in_league(res, player_id, league, available_leagues_list))
+    }
+
+    return available_leagues_list
+
+}
+
+function show_available_leagues_list(leagues_list, ctx){
+
+    size = leagues_list.length
+
+    if(size > 0){
+        leagues_list_str = ''
+        for(let league of leagues_list){
+            leagues_list_str += `${league[1]}\n`
+        }
+        ctx.reply(`O jogador está disponivel em ${size} ligas:\n${leagues_list_str}`) 
+               
+    }
+    else {
+        ctx.reply('O jogador não está disponível em nenhuma liga!')
+    }
+    
+}
+
+
+const playerInfoHandler = Telegraf.on('text', async(ctx) =>{
 
     ctx_aux = ctx
     ctx.scene.player = ctx.message.text
@@ -88,7 +142,7 @@ const playerHandler = Telegraf.on('text', async(ctx) =>{
 })
 
 
-const nameHandler = Telegraf.on('text', async(ctx) =>{
+const userHandler = Telegraf.on('text', async(ctx) =>{
 
     ctx_aux = ctx
     ctx.scene.name = ctx.message.text
@@ -96,37 +150,59 @@ const nameHandler = Telegraf.on('text', async(ctx) =>{
     await find_user_id(ctx.scene.name)
         .then(id =>find_leagues_list(id))
         .then(leagues => find_league_names(leagues))
-        .then(names => ctx_aux.reply(names))
+        .then(names => ctx.reply(names))
         
-    return ctx.wizard.next()
-})
-
-const ageHandler = Telegraf.hears(/^[0-9]*$/, async ctx => {
-    ctx.session.name = ctx.scene.state.name
-    ctx.session.age = ctx.message.text
-
-    await ctx.reply('New info has been set!', remove_keyboard)
     return ctx.scene.leave()
 })
 
-const leaguesScene = new WizardScene('leaguesScene', nameHandler, ageHandler)
-leaguesScene.enter(ctx => ctx.reply('Qual o seu nome?', exit_keyboard))
+const userLeaguesHandler = Telegraf.on('text', async(ctx) =>{
 
-const findScene = new WizardScene('findScene', playerHandler)
-findScene.enter(ctx => ctx.reply('Qual o jogador que deseja buscar?', exit_keyboard))
+    ctx.scene.user = ctx.message.text
+    
+    await find_user_id(ctx.scene.user)
+        .then(id =>find_leagues_list(id))
+        .then(leagues => ctx.scene.state.leagues = leagues)
+        .then(ctx.reply('Qual o nome completo do jogador que você deseja procurar?'))
+    
+    return ctx.wizard.next()
+})
 
-const stage = new Stage([leaguesScene, findScene])
+const playerAvailableLeaguesHandler = Telegraf.on('text', async(ctx) =>{
+
+    ctx.scene.player = ctx.message.text
+    let available_leagues_list = []
+
+    await ctx.reply(`Buscando por ${ctx.scene.player}...`)
+            .then(res => find_player_id(ctx.scene.player))
+            .then(id => find_available_leagues_for_player(ctx.scene.state.leagues, id, available_leagues_list))
+            .then(res=> show_available_leagues_list(res, ctx))
+        
+            
+    return ctx.scene.leave()
+})
+
+const leaguesScene = new WizardScene('leaguesScene', userHandler)
+leaguesScene.enter(ctx => ctx.reply('Qual o seu nome de usuário?'))
+
+const playerScene = new WizardScene('playerScene', playerInfoHandler)
+playerScene.enter(ctx => ctx.reply('Qual o nome completo do jogador que deseja buscar?\nEx: Aaron Rodgers', exit_keyboard))
+
+const availableScene = new WizardScene('availableScene', userLeaguesHandler, playerAvailableLeaguesHandler)
+availableScene.enter(ctx => ctx.reply('Qual o seu nome de usuário?'))
+
+const stage = new Stage([leaguesScene, playerScene, availableScene])
 stage.hears('exit', ctx => ctx.scene.leave())
 
 
 bot.use(session());
 bot.use(stage.middleware())
 
-bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, O SleeperBot2022 possui os seguintes comandos disponíveis:\n/find: busca pelo jogador\n/leagues para busca das ligas do usuário.`)
+bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, O SleeperBot2022 possui os seguintes comandos disponíveis:\n/find: busca pelo jogador\n/leagues: busca pelas ligas do usuário\n/available: busca em que ligas do usuário o jogador está disponível`)
             .then(res =>console.log(ctx.from)))
 
 bot.command('/leagues', ctx=> ctx.scene.enter('leaguesScene'))  
-bot.command('/find', ctx=> ctx.scene.enter('findScene'))          
+bot.command('/player', ctx=> ctx.scene.enter('playerScene'))
+bot.command('/available', ctx=> ctx.scene.enter('availableScene'))           
 
 bot.launch()
 
