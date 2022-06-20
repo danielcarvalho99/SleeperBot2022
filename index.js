@@ -197,7 +197,7 @@ stage.hears('exit', ctx => ctx.scene.leave())
 bot.use(session());
 bot.use(stage.middleware())
 
-bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, O SleeperBot2022 possui os seguintes comandos disponíveis:\n/find: busca pelo jogador\n/leagues: busca pelas ligas do usuário\n/available: busca em que ligas do usuário o jogador está disponível`)
+bot.start((ctx) => ctx.reply(`Bem-vindo ${ctx.from.first_name}, O SleeperBot2022 possui os seguintes comandos disponíveis:\n/player: busca pelo jogador\n/leagues: busca pelas ligas do usuário\n/available: busca em que ligas do usuário o jogador está disponível`)
             .then(res =>console.log(ctx.from)))
 
 bot.command('/leagues', ctx=> ctx.scene.enter('leaguesScene'))  
